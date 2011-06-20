@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:View xmlns:fx="http://ns.adobe.com/mxml/2009" creationComplete="init(event)" 
+		xmlns:s="library://ns.adobe.com/flex/spark" title="HomeView">
+	<fx:Script>
+		<![CDATA[
+			import coldfusion.air.*;
+			import coldfusion.air.errors.*;
+			import coldfusion.air.events.*;
+			
+			import mx.collections.ArrayCollection;
+			import mx.events.FlexEvent;
+			import mx.rpc.AsyncToken;
+			import mx.rpc.Responder;
+			
+			import vo.Person;
+			
+			protected var syncmanager:SyncManager;
+			protected var session:Session;
+			
+			protected var dataToPush:Object = new Object();
+			
+			[Bindable]
+			protected var persons:ArrayCollection;
+			
+			protected function init(event:FlexEvent):void
+			{
+				
+				//Change these values to match your server's configuration
+				syncmanager = new SyncManager();
+				syncmanager.cfPort = 80;
+				syncmanager.cfServer = "centaur.dev";
+				syncmanager.syncCFC = "hoytstaff.services.personSynch";
+				
+				dataToPush.syncmanager = syncmanager;
+				
+				getRemote();
+			}
+			
+			private function getRemote():void
+			{
+				var token:AsyncToken = syncmanager.fetch("fetch");
+				token.addResponder(new mx.rpc.Responder(fetchSuccess, fetchFault));
+				trace("Requesting Remote Data");
+			}
+			
+			private function fetchSuccess(event:SyncResultEvent):void
+			{
+				var personArray:Array = event.result as Array;
+				var lpersons:ArrayCollection = new ArrayCollection(personArray);
+				
+				persons = modifyPersonArray(lpersons);
+				
+				trace("Received Remote Data");
+				createLocalDB();
+				
+			}
+			
+			private function fetchFault():void
+			{
+				
+			}
+			
+			private function createLocalDB():void
+			{
+				//Create a pointer to actual SQLite db file
+				var dbFile:File = File.applicationDirectory.resolvePath("hoytstaff.db");
+				
+				var sessiontoken:SessionToken =syncmanager.openSession(dbFile,017916);
+				sessiontoken.addResponder(new mx.rpc.Responder(connectSuccess,connectFault));
+				trace("Creating local client store if necessary");
+				
+			}
+			
+			private function connectSuccess(event:SessionResultEvent):void
+			{
+				session = event.sessionToken.session;
+				dataToPush.session = session;
+				
+				var savetoken:SessionToken = session.saveUpdateCache(persons);
+				savetoken.addResponder(new mx.rpc.Responder(saveCacheSuccess, savefault));
+				trace("Storing remote data locally");
+			}
+			
+			private function connectFault(event:SessionFaultEvent):void
+			{
+				// TODO Auto Generated method stub
+				
+			}
+			
+			private function saveCacheSuccess(event:SessionResultEvent):void
+			{
+				// TODO Auto Generated method stub
+				
+			}
+			
+			private function savefault(event:SessionFaultEvent):void
+			{
+				// TODO Auto Generated method stub
+				
+			}
+			
+			private function modifyPersonArray(lpersons:ArrayCollection):ArrayCollection
+			{
+				var results:ArrayCollection = new ArrayCollection();
+				
+				for (var i:int = 0; i < lpersons.length; i++){
+					var person:Person = lpersons.getItemAt(i) as Person;
+					results.addItem(person);
+				}
+				
+				// TODO Auto Generated method stub
+				return results;
+			}
+			
+					
+			
+			protected function personList_clickHandler(event:MouseEvent):void
+			{
+				if (personList.selectedIndex > -1){
+					dataToPush.person = personList.selectedItem;
+					navigator.pushView(EditView,dataToPush);
+				}
+				
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<s:List id="personList" left="10" right="10" top="10" bottom="10" dataProvider="{persons}" labelFunction="getFullName" click="personList_clickHandler(event)">
+		<fx:Script>
+			<![CDATA[
+				private function getFullName(obj:Object):String{
+					return obj.firstName + " " + obj.lastName; 
+				}	
+			]]>
+		</fx:Script>
+	</s:List>
+</s:View>

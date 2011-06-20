@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:View xmlns:fx="http://ns.adobe.com/mxml/2009" creationComplete="init(event)" 
+		xmlns:s="library://ns.adobe.com/flex/spark" title="EditView">
+	<fx:Script>
+		<![CDATA[
+			import coldfusion.air.Session;
+			import coldfusion.air.SessionToken;
+			import coldfusion.air.SyncManager;
+			import coldfusion.air.events.SessionFaultEvent;
+			import coldfusion.air.events.SessionResultEvent;
+			
+			import mx.events.FlexEvent;
+			import mx.rpc.Responder;
+			
+			import vo.Person;
+			
+			[Bindable]
+			protected var person:Person = new Person;
+			
+			protected var syncmanager:SyncManager;
+			protected var session:Session;
+			
+			protected function init(event:FlexEvent):void
+			{
+				if (data.syncmanager){
+					syncmanager = data.syncmanager;
+				}
+				
+				if (data.person){
+					person = data.person;
+				}
+				
+				if (data.session){
+					session = data.session;
+				}
+				
+			}
+			
+			protected function saveBtn_clickHandler(event:MouseEvent):void
+			{
+				//session.saveUpdate saves record to SQLite Database
+				var savetoken:SessionToken = session.saveUpdate(person); 
+				savetoken.addResponder(new mx.rpc.Responder(saveSuccess, savefault));
+				
+			}
+			
+			private function saveSuccess(event:SessionResultEvent):void
+			{
+				saveRemote();
+				
+			}
+			
+			private function savefault():void
+			{
+				// TODO Auto Generated method stub
+				
+			}
+			
+			private function saveRemote():void
+			{
+				var committoken:SessionToken = session.commit();
+				committoken.addResponder(new mx.rpc.Responder(commitSuccess, commitFault));   
+			}
+			
+			private function commitSuccess(event:SessionResultEvent):void
+			{
+				// TODO Auto Generated method stub
+				
+			}
+			
+			private function commitFault(event:SessionFaultEvent):void
+			{
+				trace(event.error.message);
+				
+			}
+			
+		]]>
+	</fx:Script>
+	<s:VGroup top="5" bottom="5" left="5" right="5" gap="10">
+		<s:Label text="First Name:"/>
+		<s:TextInput id="firstname" text="@{person.firstName}" />
+		
+		<s:Label text="Last Name:"/>
+		<s:TextInput id="lastname" text="@{person.lastName}" />
+		
+		<s:Label text="Blog:"/>
+		<s:TextInput id="blog" text="@{person.blog}" />
+		
+		<s:Label text="Twitter:"/>
+		<s:TextInput id="twitter" text="@{person.twitter}" />
+		
+		<s:Label text="Location:"/>
+		<s:TextInput id="location" text="@{person.location}" />
+		
+	</s:VGroup>
+
+	<s:viewMenuItems>
+		<s:ViewMenuItem id="saveBtn" label="Save" click="saveBtn_clickHandler(event)" />
+	</s:viewMenuItems>
+
+</s:View>
