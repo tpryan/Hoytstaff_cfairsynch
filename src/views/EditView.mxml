@@ -1,21 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <s:View xmlns:fx="http://ns.adobe.com/mxml/2009" creationComplete="init(event)" 
-		xmlns:s="library://ns.adobe.com/flex/spark" title="EditView">
+		xmlns:s="library://ns.adobe.com/flex/spark" title="EditView" xmlns:components="components.*">
 	<fx:Script>
 		<![CDATA[
 			import coldfusion.air.Session;
 			import coldfusion.air.SessionToken;
 			import coldfusion.air.SyncManager;
+			import coldfusion.air.events.ConflictEvent;
 			import coldfusion.air.events.SessionFaultEvent;
 			import coldfusion.air.events.SessionResultEvent;
+			import coldfusion.air.events.SyncResultEvent;
 			
+			import mx.collections.ArrayCollection;
 			import mx.events.FlexEvent;
+			import mx.rpc.AsyncToken;
 			import mx.rpc.Responder;
 			
 			import vo.Person;
 			
 			[Bindable]
 			protected var person:Person = new Person;
+			protected var conflicts:ArrayCollection = new ArrayCollection();
 			
 			protected var syncmanager:SyncManager;
 			protected var session:Session;
@@ -33,6 +38,8 @@
 				if (data.session){
 					session = data.session;
 				}
+				
+				syncmanager.addEventListener(ConflictEvent.CONFLICT, conflictHandler);
 				
 			}
 			
@@ -64,8 +71,8 @@
 			
 			private function commitSuccess(event:SessionResultEvent):void
 			{
-				// TODO Auto Generated method stub
-				
+				trace(event.result.toString());
+				alert.open(this,true);
 			}
 			
 			private function commitFault(event:SessionFaultEvent):void
@@ -74,8 +81,48 @@
 				
 			}
 			
+			private function conflictHandler(event:ConflictEvent):void 
+			{ 
+				conflicts = event.result as ArrayCollection; 
+				popup.open(this,true);
+				
+			} 
+			
+			
+			private function conflictSuccess(event:SessionResultEvent):void
+			{
+				
+			}
+			
+			
+			private function conflictFault(event:SessionResultEvent):void
+			{
+				// TODO Auto Generated method stub
+				
+			}
+			
+			protected function popup_serverHandler(event:Event):void
+			{
+				var token:SessionToken = session.keepAllServerObjects(conflicts);
+				token.addResponder(new mx.rpc.Responder(conflictSuccess, conflictFault)); 
+				
+			}
+			
+			protected function popup_clientHandler(event:Event):void
+			{
+				var token:SessionToken = session.keepAllClientObjects(conflicts);
+				token.addResponder(new mx.rpc.Responder(conflictSuccess, conflictFault)); 
+				
+			}
+			
 		]]>
 	</fx:Script>
+	
+	<fx:Declarations>
+		<components:Alert id="alert" message="Your changes have been saved" x="100" y="300" />
+		<components:ConflictPopUp id="popup" server="popup_serverHandler(event)" client="popup_clientHandler(event)" x="100" y="300" />
+	</fx:Declarations>
+	
 	<s:VGroup top="5" bottom="5" left="5" right="5" gap="10">
 		<s:Label text="First Name:"/>
 		<s:TextInput id="firstname" text="@{person.firstName}" />
